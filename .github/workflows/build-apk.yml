@@ -16,6 +16,11 @@ jobs:
           unzip -q red_lookup_project.zip -d app
           ls -la app
 
+      - name: Patch text type for newer pdfrx
+        run: |
+          sed -i 's/final PdfPageText? text = await page.loadText();/final text = await page.loadText();/' app/lib/reader_page.dart
+          grep -n "loadText" app/lib/reader_page.dart
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
