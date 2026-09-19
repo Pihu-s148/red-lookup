@@ -46,6 +46,33 @@ jobs:
           cp -r /tmp/scaffold/red_lookup/android android
           sed -i 's/android:label="[^"]*"/android:label="Red Lookup"/' android/app/src/main/AndroidManifest.xml
 
+      - name: Force compileSdk 36 for all plugins
+        working-directory: app/android
+        run: |
+          if [ -f build.gradle.kts ]; then
+          cat >> build.gradle.kts <<'EOF'
+
+          subprojects {
+              val fixSdk: (Project) -> Unit = { p ->
+                  val ext = p.extensions.findByName("android")
+                  if (ext != null) {
+                      ext.javaClass.getMethod("compileSdkVersion", Int::class.java).invoke(ext, 36)
+                  }
+              }
+              if (state.executed) fixSdk(this) else afterEvaluate { fixSdk(this) }
+          }
+          EOF
+          else
+          cat >> build.gradle <<'EOF'
+
+          subprojects {
+              def fixSdk = { p -> if (p.hasProperty('android')) { p.android.compileSdkVersion 36 } }
+              if (project.state.executed) { fixSdk(project) } else { afterEvaluate { fixSdk(project) } }
+          }
+          EOF
+          fi
+          ls
+          
       - name: Get packages
         working-directory: app
         run: flutter pub get
