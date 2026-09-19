@@ -1,0 +1,55 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unzip project
+        run: |
+          unzip -q red_lookup_project.zip -d app
+          ls -la app
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build WordNet dictionary database
+        working-directory: app
+        run: python tools/build_dictionary.py
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Generate Android project files
+        working-directory: app
+        run: |
+          mkdir -p /tmp/scaffold
+          (cd /tmp/scaffold && flutter create --project-name red_lookup --org com.redlookup --platforms=android red_lookup)
+          cp -r /tmp/scaffold/red_lookup/android android
+          sed -i 's/android:label="[^"]*"/android:label="Red Lookup"/' android/app/src/main/AndroidManifest.xml
+
+      - name: Get packages
+        working-directory: app
+        run: flutter pub get
+
+      - name: Build APK
+        working-directory: app
+        run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RedLookup-apk
+          path: app/build/app/outputs/flutter-apk/app-release.apk
